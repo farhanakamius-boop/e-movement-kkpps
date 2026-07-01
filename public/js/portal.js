@@ -1,287 +1,327 @@
-// e-Hadir KKPPS - Lecturer Portal Scripting (Login & Control Panel)
+// e-Hadir KKPPS - Lecturer Portal Firebase Scripting
 
-const API_LOGIN = '/api/login';
-const API_STATUS = '/api/status';
-const API_LECTURERS = '/api/lecturers';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, collection, getDocs, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBPA1p1KTESOts7JVVGDooQGVk9EP8oGi0",
+  authDomain: "e-movement-kkpps.firebaseapp.com",
+  projectId: "e-movement-kkpps",
+  storageBucket: "e-movement-kkpps.firebasestorage.app",
+  messagingSenderId: "61180910117",
+  appId: "1:61180910117:web:354efb21bbdb0a74fbbdcc"
+};
+
+// Initialize Firebase & Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const LECTURER_ID_KEY = 'kkpps_lecturer_id';
+const LECTURER_TOKEN_KEY = 'kkpps_lecturer_token';
+const LECTURER_NAME_KEY = 'kkpps_lecturer_name';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Detect which page is loaded
     const loginForm = document.getElementById('loginForm');
-    const statusForm = document.getElementById('statusForm');
+    const portalSection = document.getElementById('portalSection');
+
+    // Run live clocks
+    updateLiveTime();
+    setInterval(updateLiveTime, 1000);
 
     if (loginForm) {
         initLoginPage();
-    } else if (statusForm) {
+    } else if (portalSection) {
         initPortalPage();
     }
 });
 
-// ==========================================
-// 1. LOGIN PAGE CONTROLLERS
-// ==========================================
-async function initLoginPage() {
-    initTheme('authThemeToggle', 'authThemeIcon');
-    const lecturerSelect = document.getElementById('lecturerSelect');
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
-    const errorText = document.getElementById('errorText');
-    const btnSubmit = document.getElementById('btnSubmit');
+// Theme Setup
+function initTheme(toggleId, iconId) {
+    const themeToggle = document.getElementById(toggleId);
+    const themeIcon = document.getElementById(iconId);
+    if (!themeToggle || !themeIcon) return;
 
-    // Populate dropdown with lecturers from CSV API
-    try {
-        const response = await fetch(API_LECTURERS);
-        if (!response.ok) throw new Error('Gagal mendapatkan senarai pensyarah.');
-        
-        const lecturers = await response.json();
-        
-        // Clear placeholder
-        lecturerSelect.innerHTML = '<option value="" disabled selected>Pilih nama anda...</option>';
-        
-        // Sort lecturers alphabetically by name
-        lecturers.sort((a, b) => a.name.localeCompare(b.name));
-        
-        lecturers.forEach(l => {
-            const opt = document.createElement('option');
-            opt.value = l.id;
-            opt.textContent = `${l.name} (${l.role})`;
-            lecturerSelect.appendChild(opt);
-        });
-    } catch (error) {
-        console.error(error);
-        lecturerSelect.innerHTML = '<option value="" disabled>Gagal memuatkan nama staf</option>';
-        showToast('Ralat memuatkan pangkalan data. Sila refresh.', 'error');
-    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeUI(savedTheme, themeIcon, themeToggle);
 
-    // Submit handler
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const lecturerId = lecturerSelect.value;
-        const icVal = document.getElementById('icInput').value.trim();
-        
-        if (!lecturerId || !icVal) return;
-
-        // Visual loading state
-        loginError.style.display = 'none';
-        btnSubmit.disabled = true;
-        const origSubmitText = btnSubmit.innerHTML;
-        btnSubmit.innerHTML = '<div class="spinner"></div><span>Menghubung...</span>';
-
-        try {
-            const response = await fetch(API_LOGIN, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: lecturerId, ic: icVal })
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                // Store session
-                localStorage.setItem('kkpps_lecturer_id', result.lecturer.id);
-                localStorage.setItem('kkpps_lecturer_name', result.lecturer.name);
-                localStorage.setItem('kkpps_lecturer_role', result.lecturer.role);
-                localStorage.setItem('kkpps_token', result.token);
-
-                showToast('Log masuk berjaya!', 'success');
-                setTimeout(() => {
-                    window.location.href = 'portal.html';
-                }, 800);
-            } else {
-                throw new Error(result.message || 'Log masuk gagal');
-            }
-        } catch (error) {
-            console.error(error);
-            errorText.textContent = error.message;
-            loginError.style.display = 'flex';
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = origSubmitText;
-        }
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeUI(newTheme, themeIcon, themeToggle);
     });
 }
 
-// ==========================================
-// 2. PORTAL PANEL CONTROLLERS
-// ==========================================
+function updateThemeUI(theme, iconEl, toggleEl) {
+    if (theme === 'dark') {
+        iconEl.textContent = 'light_mode';
+        toggleEl.setAttribute('title', 'Tukar ke tema Cerah');
+    } else {
+        iconEl.textContent = 'dark_mode';
+        toggleEl.setAttribute('title', 'Tukar ke tema Gelap');
+    }
+}
+
+// ----------------------------------------------------
+// 1. LECTURER LOGIN PAGE
+// ----------------------------------------------------
+async function initLoginPage() {
+    initTheme('loginThemeToggle', 'loginThemeIcon');
+    const select = document.getElementById('lecturerSelect');
+    const form = document.getElementById('loginForm');
+    const btnSubmit = document.getElementById('btnLoginSubmit');
+    const errorBox = document.getElementById('loginError');
+    const errorText = document.getElementById('errorText');
+
+    // Load lecturer list for selection dropdown
+    try {
+        const collRef = collection(db, "lecturers");
+        const snapshot = await getDocs(collRef);
+        const lecturers = [];
+        snapshot.forEach(doc => lecturers.push(doc.data()));
+
+        if (lecturers.length === 0) {
+            select.innerHTML = '<option value="">Tiada rekod (Gagal menyemai database)</option>';
+            return;
+        }
+
+        // Sort alphabetically
+        lecturers.sort((a, b) => a.name.localeCompare(b.name));
+
+        select.innerHTML = '<option value="">Pilih Nama Anda...</option>' + 
+            lecturers.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            
+        select.disabled = false;
+        btnSubmit.disabled = false;
+    } catch (e) {
+        console.error("Gagal menyambung ke Firestore:", e);
+        showToast('Ralat sambungan pangkalan data.', 'error');
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const idVal = select.value;
+        const icVal = document.getElementById('icInput').value.trim();
+
+        if (!idVal || !icVal) {
+            showLoginError('Sila pilih nama dan masukkan No. IC');
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<div class="spinner" style="width:18px; height:18px; border-top-color:#fff;"></div>`;
+
+        try {
+            // Retrieve targeted lecturer from Firestore
+            const docRef = doc(db, "lecturers", idVal);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const lecturer = docSnap.data();
+                
+                // Compare cleaned ICs
+                const cleanDbIc = lecturer.ic.replace(/[-\s]/g, '');
+                const cleanInputIc = icVal.replace(/[-\s]/g, '');
+
+                if (cleanDbIc === cleanInputIc) {
+                    // Save Session details
+                    localStorage.setItem(LECTURER_ID_KEY, lecturer.id);
+                    localStorage.setItem(LECTURER_TOKEN_KEY, lecturer.ic);
+                    localStorage.setItem(LECTURER_NAME_KEY, lecturer.name);
+
+                    showToast('Log masuk berjaya!', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'portal.html';
+                    }, 800);
+                    return;
+                }
+            }
+            showLoginError('No. IC tidak sepadan dengan rekod pensyarah');
+        } catch (err) {
+            showLoginError('Sistem tergendala: ' + err.message);
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `
+                <span class="material-symbols-outlined">login</span>
+                <span>Log Masuk</span>
+            `;
+        }
+    });
+
+    function showLoginError(msg) {
+        errorText.textContent = msg;
+        errorBox.style.display = 'flex';
+    }
+}
+
+// ----------------------------------------------------
+// 2. LECTURER PORTAL PAGE
+// ----------------------------------------------------
 async function initPortalPage() {
     initTheme('portalThemeToggle', 'portalThemeIcon');
+    const lecturerId = localStorage.getItem(LECTURER_ID_KEY);
+    const lecturerToken = localStorage.getItem(LECTURER_TOKEN_KEY);
+    const lecturerName = localStorage.getItem(LECTURER_NAME_KEY);
 
-    // Page session guard
-    const lecturerId = localStorage.getItem('kkpps_lecturer_id');
-    const token = localStorage.getItem('kkpps_token');
-    const lecturerName = localStorage.getItem('kkpps_lecturer_name');
-    const lecturerRole = localStorage.getItem('kkpps_lecturer_role');
-
-    if (!lecturerId || !token) {
-        // Redirect to login if session missing
+    if (!lecturerId || !lecturerToken) {
         window.location.href = 'login.html';
         return;
     }
 
-    // Populate header UI details
-    document.getElementById('portalLecturerName').textContent = lecturerName;
-    document.getElementById('portalLecturerRole').textContent = lecturerRole;
-    document.getElementById('portalAvatar').textContent = getInitials(lecturerName);
+    // Display greeting
+    document.getElementById('greetingName').textContent = lecturerName;
 
-    // Form inputs and triggers
-    const statusIn = document.getElementById('statusIn');
-    const statusOut = document.getElementById('statusOut');
-    const outDetailsForm = document.getElementById('outDetailsForm');
-    const destinationInput = document.getElementById('destinationInput');
+    const selectStatus = document.getElementById('statusSelect');
+    const keluarFields = document.getElementById('keluarFields');
+    const destInput = document.getElementById('destinationInput');
     const waktuKeluarInput = document.getElementById('waktuKeluarInput');
     const waktuKembaliInput = document.getElementById('waktuKembaliInput');
-    const statusForm = document.getElementById('statusForm');
-    const btnSaveStatus = document.getElementById('btnSaveStatus');
-    const btnLogout = document.getElementById('btnLogout');
+    const form = document.getElementById('statusForm');
+    const btnSave = document.getElementById('btnSaveStatus');
+    const logoutBtn = document.getElementById('btnLogout');
 
-    // Load active status details from server database
+    // Retrieve current status
     try {
-        const response = await fetch(API_LECTURERS);
-        if (response.ok) {
-            const list = await response.json();
-            const self = list.find(l => l.id === parseInt(lecturerId));
+        const docRef = doc(db, "lecturers", lecturerId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
             
-            if (self) {
-                // Populate existing records
-                if (self.status === 'Keluar') {
-                    statusOut.checked = true;
-                    outDetailsForm.classList.add('active');
-                    destinationInput.value = self.destination || '';
-                    waktuKeluarInput.value = self.waktu_keluar || '';
-                    waktuKembaliInput.value = self.waktu_kembali || '';
-                } else {
-                    statusIn.checked = true;
-                    outDetailsForm.classList.remove('active');
-                }
-            }
+            // Populate form
+            selectStatus.value = data.status || 'Dalam Kampus';
+            toggleKeluarFields(selectStatus.value);
+            
+            destInput.value = data.destination || '';
+            waktuKeluarInput.value = data.waktu_keluar || '';
+            waktuKembaliInput.value = data.waktu_kembali || '';
+        } else {
+            showToast('Rekod pensyarah tidak dijumpai.', 'error');
         }
     } catch (e) {
-        console.error("Gagal mendapatkan status sedia ada:", e);
+        showToast('Gagal memuatkan status dari awan.', 'error');
     }
 
-    // Toggle fields based on status option selected
-    statusIn.addEventListener('change', () => {
-        if (statusIn.checked) outDetailsForm.classList.remove('active');
+    selectStatus.addEventListener('change', () => {
+        toggleKeluarFields(selectStatus.value);
     });
 
-    statusOut.addEventListener('change', () => {
-        if (statusOut.checked) outDetailsForm.classList.add('active');
-    });
-
-    // Handle Form Submit
-    statusForm.addEventListener('submit', async (e) => {
+    // Save Status
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        btnSave.disabled = true;
+        btnSave.innerHTML = `<div class="spinner" style="width:18px; height:18px; border-top-color:#fff;"></div>`;
 
-        const statusValue = statusIn.checked ? 'Dalam Kampus' : 'Keluar';
-        const destVal = destinationInput.value.trim();
-        const wKeluar = waktuKeluarInput.value.trim();
-        const wKembali = waktuKembaliInput.value.trim();
-
-        if (statusValue === 'Keluar' && (!destVal || !wKeluar || !wKembali)) {
-            showToast('Sila isikan destinasi, waktu keluar dan jangka kembali.', 'error');
-            return;
-        }
-
-        // Show spinner state
-        btnSaveStatus.disabled = true;
-        const origText = btnSaveStatus.innerHTML;
-        btnSaveStatus.innerHTML = '<div class="spinner"></div><span>Menyimpan...</span>';
+        const status = selectStatus.value;
+        const dest = status === 'Keluar' ? destInput.value.trim() : '';
+        const wKeluar = status === 'Keluar' ? waktuKeluarInput.value.trim() : '';
+        const wKembali = status === 'Keluar' ? waktuKembaliInput.value.trim() : '';
 
         try {
-            const response = await fetch(API_STATUS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: parseInt(lecturerId),
-                    token: token,
-                    status: statusValue,
-                    destination: statusValue === 'Keluar' ? destVal : '',
-                    waktu_keluar: statusValue === 'Keluar' ? wKeluar : '',
-                    waktu_kembali: statusValue === 'Keluar' ? wKembali : ''
-                })
+            const docRef = doc(db, "lecturers", lecturerId);
+            const dateStr = formatCurrentDateTime(new Date());
+
+            await updateDoc(docRef, {
+                status: status,
+                destination: dest,
+                waktu_keluar: wKeluar,
+                waktu_kembali: wKembali,
+                updated_at: dateStr
             });
 
-            const res = await response.json();
-
-            if (response.ok && res.success) {
-                showToast('Status anda berjaya dikemaskini!', 'success');
-            } else {
-                throw new Error(res.message || 'Gagal menyimpan status');
-            }
-        } catch (error) {
-            console.error(error);
-            showToast(error.message, 'error');
+            showToast('Status kehadiran berjaya dikemas kini!', 'success');
+        } catch (err) {
+            showToast('Gagal menyimpan status: ' + err.message, 'error');
         } finally {
-            btnSaveStatus.disabled = false;
-            btnSaveStatus.innerHTML = origText;
+            btnSave.disabled = false;
+            btnSave.innerHTML = `
+                <span class="material-symbols-outlined">save</span>
+                <span>Simpan Kehadiran</span>
+            `;
         }
     });
 
-    // Handle Logout
-    btnLogout.addEventListener('click', () => {
-        localStorage.removeItem('kkpps_lecturer_id');
-        localStorage.removeItem('kkpps_lecturer_name');
-        localStorage.removeItem('kkpps_lecturer_role');
-        localStorage.removeItem('kkpps_token');
-        showToast('Berjaya log keluar.', 'success');
+    // Logout
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem(LECTURER_ID_KEY);
+        localStorage.removeItem(LECTURER_TOKEN_KEY);
+        localStorage.removeItem(LECTURER_NAME_KEY);
+        showToast('Sesi ditutup. Sila log masuk semula.', 'success');
         setTimeout(() => {
             window.location.href = 'login.html';
-        }, 600);
+        }, 800);
     });
-}
 
-// ==========================================
-// 3. UTILITIES & HELPER FUNCTIONS
-// ==========================================
-function initTheme(btnId, iconId) {
-    const btn = document.getElementById(btnId);
-    const icon = document.getElementById(iconId);
-    if (!btn || !icon) return;
-
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    icon.textContent = currentTheme === 'dark' ? 'light_mode' : 'dark_mode';
-
-    btn.addEventListener('click', () => {
-        const theme = document.documentElement.getAttribute('data-theme');
-        const nextTheme = theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', nextTheme);
-        localStorage.setItem('theme', nextTheme);
-        icon.textContent = nextTheme === 'dark' ? 'light_mode' : 'dark_mode';
-    });
-}
-
-function getInitials(name) {
-    if (!name) return 'S';
-    let cleaned = name.toUpperCase()
-        .replace(/^(TS\.|DR\.|HJ\.|HAJI|PUAN|EN\.|ENCIK)\s+/i, '')
-        .trim();
-        
-    const parts = cleaned.split(' ');
-    if (parts.length > 1) {
-        return parts[0][0] + parts[1][0];
+    function toggleKeluarFields(status) {
+        if (status === 'Keluar') {
+            keluarFields.style.display = 'block';
+            destInput.required = true;
+        } else {
+            keluarFields.style.display = 'none';
+            destInput.required = false;
+        }
     }
-    return parts[0].substring(0, 2);
 }
 
+// Format date helper: "30-06-2026 03:40 PM"
+function formatCurrentDateTime(d) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = String(hours).padStart(2, '0');
+    return `${day}-${month}-${year} ${strHours}:${minutes} ${ampm}`;
+}
+
+// Real-time Clock Widget
+function updateLiveTime() {
+    const liveDateEl = document.getElementById('liveDate');
+    const liveTimeEl = document.getElementById('liveTime');
+    if (!liveDateEl || !liveTimeEl) return;
+
+    const now = new Date();
+    const optionsDate = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    const dateStr = now.toLocaleDateString('ms-MY', optionsDate);
+    const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+    const timeStr = now.toLocaleTimeString('ms-MY', optionsTime).toUpperCase();
+    
+    liveDateEl.textContent = dateStr;
+    liveTimeEl.textContent = timeStr;
+}
+
+// Toast Notifications Helper
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
-    const icon = type === 'success' ? 'check_circle' : 'error';
+    let icon = 'check_circle';
+    if (type === 'error') icon = 'cancel';
+    
     toast.innerHTML = `
         <span class="material-symbols-outlined">${icon}</span>
         <span>${message}</span>
     `;
-    
+
     container.appendChild(toast);
-    
-    // Animate and remove
     setTimeout(() => {
-        toast.style.animation = 'toast-in 0.3s reverse forwards';
+        toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, 3500);
 }

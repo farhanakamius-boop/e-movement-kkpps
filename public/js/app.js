@@ -1,4 +1,21 @@
-// e-Hadir KKPPS - Student Dashboard Logic
+// e-Hadir KKPPS - Student Dashboard Firebase Real-time Logic
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, collection, getDocs, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBPA1p1KTESOts7JVVGDooQGVk9EP8oGi0",
+  authDomain: "e-movement-kkpps.firebaseapp.com",
+  projectId: "e-movement-kkpps",
+  storageBucket: "e-movement-kkpps.firebasestorage.app",
+  messagingSenderId: "61180910117",
+  appId: "1:61180910117:web:354efb21bbdb0a74fbbdcc"
+};
+
+// Initialize Firebase & Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 let lecturersList = [];
 let currentFilter = 'all';
@@ -17,19 +34,16 @@ const liveText = document.getElementById('liveText');
 const pulseDot = document.querySelector('.pulse-dot');
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
-    fetchLecturers(true); // first load with loader
     setupEventListeners();
+    showLoader();
     
-    // Update live clock
-    updateLiveTime();
-    setInterval(updateLiveTime, 1000);
+    // 1. Seed Cloud Firestore if it is empty
+    await seedFirestoreIfEmpty(db);
     
-    // Auto-refresh every 5 seconds
-    setInterval(() => {
-        fetchLecturers(false); // background silent refresh
-    }, 5000);
+    // 2. Set up real-time listener (Syncs instantly on cloud database changes)
+    listenToLecturers(db);
 });
 
 // Theme Logic
@@ -49,37 +63,108 @@ function updateThemeUI(theme) {
     }
 }
 
-// Fetch data from API
-async function fetchLecturers(showSpinner = false) {
-    if (showSpinner) {
-        showLoader();
-    }
-    
-    // Animate live pulse dot briefly during update
-    triggerLiveFlash();
-
+// ----------------------------------------------------
+// DATABASE SEEDER (CSV -> FIRESTORE)
+// ----------------------------------------------------
+async function seedFirestoreIfEmpty(database) {
     try {
-        const response = await fetch('/api/lecturers');
-        if (!response.ok) throw new Error('Ralat sambungan pelayan');
+        const collRef = collection(database, "lecturers");
+        const snapshot = await getDocs(collRef);
         
-        lecturersList = await response.ok ? await response.json() : [];
-        updateStats();
-        renderDashboard();
+        // If data already exists, skip seeding
+        if (!snapshot.empty) return;
+        
+        console.log("Firestore empty. Seeding database from CSV...");
+        const response = await fetch("STAF KKPPS .csv");
+        if (!response.ok) throw new Error("Gagal membaca fail CSV.");
+        
+        const csvText = await response.text();
+        const lines = csvText.split(/\r?\n/);
+        
+        for (let line of lines) {
+            const row = parseCSVLine(line);
+            if (!row || row.length < 6) continue;
+            
+            const idStr = row[0].trim();
+            if (!/^\d+$/.test(idStr)) continue; // Only process rows starting with IDs
+            
+            const id = parseInt(idStr);
+            const name = row[2].trim();
+            const role = row[3].trim().replace(/\s+/g, ' ');
+            const phone = row[4].trim();
+            const ic = row[5].trim();
+            
+            if (!name) continue;
+            
+            // Set document in Firestore
+            const docRef = doc(database, "lecturers", idStr);
+            await setDoc(docRef, {
+                id: id,
+                name: name,
+                role: role || "Pensyarah / Kakitangan",
+                phone: phone,
+                ic: ic,
+                status: "Dalam Kampus",
+                destination: "",
+                waktu_keluar: "",
+                waktu_kembali: "",
+                updated_at: ""
+            });
+        }
+        console.log("Database successfully seeded in Cloud Firestore!");
     } catch (error) {
-        console.error('Gagal mengambil data:', error);
-        if (showSpinner) {
-            lecturersGrid.innerHTML = `
-                <div class="no-results">
-                    <div class="no-results-icon">
-                        <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--danger);">wifi_off</span>
-                    </div>
-                    <h3>Gagal Menyambung ke Pelayan</h3>
-                    <p>${error.message || 'Sila pastikan server Python anda sedang berjalan.'}</p>
-                    <button onclick="fetchLecturers(true)" class="btn-login" style="margin: 1rem auto; padding: 0.5rem 1rem;">Cuba Semula</button>
-                </div>
-            `;
+        console.error("Gagal menyemai database:", error);
+    }
+}
+
+// Helper to parse CSV lines safely (handling commas inside quotes)
+function parseCSVLine(text) {
+    let arr = [];
+    let quote = false;
+    let entry = "";
+    for (let i = 0; i < text.length; i++) {
+        let char = text[i];
+        if (char === '"') {
+            quote = !quote;
+        } else if (char === ',' && !quote) {
+            arr.push(entry);
+            entry = "";
+        } else {
+            entry += char;
         }
     }
+    arr.push(entry);
+    return arr;
+}
+
+// ----------------------------------------------------
+// REAL-TIME FIRESTORE LISTENER
+// ----------------------------------------------------
+function listenToLecturers(database) {
+    const collRef = collection(database, "lecturers");
+    
+    // Register real-time sync snapshot
+    onSnapshot(collRef, (snapshot) => {
+        triggerLiveFlash();
+        lecturersList = [];
+        snapshot.forEach((doc) => {
+            lecturersList.push(doc.data());
+        });
+        
+        updateStats();
+        renderDashboard();
+    }, (error) => {
+        console.error("Gagal memuat turun data Firebase:", error);
+        lecturersGrid.innerHTML = `
+            <div class="no-results">
+                <div class="no-results-icon">
+                    <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--danger);">wifi_off</span>
+                </div>
+                <h3>Ralat Pangkalan Data</h3>
+                <p>Gagal menyambung ke Cloud Firebase: ${error.message}</p>
+            </div>
+        `;
+    });
 }
 
 function triggerLiveFlash() {
@@ -95,7 +180,7 @@ function showLoader() {
     lecturersGrid.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 5rem;">
             <div class="spinner" style="margin: 0 auto 1rem auto; width: 45px; height: 45px; border-color: rgba(79,70,229,0.2); border-top-color: var(--primary);"></div>
-            <p style="color: var(--text-muted); font-weight: 600; font-size: 1rem;">Mengemaskini status terkini...</p>
+            <p style="color: var(--text-muted); font-weight: 600; font-size: 1rem;">Mengemaskini status dari awan...</p>
         </div>
     `;
 }
@@ -115,13 +200,11 @@ function updateStats() {
 function renderDashboard() {
     // Filter & Search the list
     const filteredList = lecturersList.filter(lecturer => {
-        // Status filter
         const matchStatus = 
             currentFilter === 'all' || 
             (currentFilter === 'in' && lecturer.status === 'Dalam Kampus') ||
             (currentFilter === 'out' && lecturer.status === 'Keluar');
             
-        // Text search filter
         const query = searchQuery.toLowerCase().trim();
         const matchText = 
             query === '' || 
@@ -138,24 +221,22 @@ function renderDashboard() {
                     <span class="material-symbols-outlined" style="font-size: 3.5rem;">search_off</span>
                 </div>
                 <h3>Tiada Hasil Ditemui</h3>
-                <p>Tiada rekod pensyarah sepadan dengan carian "${searchInput.value}" atau penapis yang dipilih.</p>
+                <p>Tiada rekod pensyarah sepadan dengan carian "${searchInput.value}".</p>
             </div>
         `;
         return;
     }
 
+    // Sort alphabetically by name
+    filteredList.sort((a, b) => a.name.localeCompare(b.name));
+
     lecturersGrid.innerHTML = filteredList.map(lecturer => {
         const isOut = lecturer.status === 'Keluar';
         const cardStatusClass = isOut ? 'status-out' : 'status-in';
-        
-        // Extract initials for profile image placeholder
         const initials = getInitials(lecturer.name);
-        
-        // Clean phone number for WhatsApp link
         const whatsappLink = formatWhatsappLink(lecturer.phone);
         const phoneCallLink = lecturer.phone ? `tel:${lecturer.phone}` : '#';
 
-        // Details structure
         const dest = isOut ? lecturer.destination || 'Tidak dinyatakan' : 'Bilik Pensyarah / Pejabat';
         const wKeluar = isOut ? lecturer.waktu_keluar || '-' : '-';
         const wKembali = isOut ? lecturer.waktu_kembali || '-' : '-';
@@ -164,7 +245,6 @@ function renderDashboard() {
         return `
             <article class="lecturer-card ${cardStatusClass}" id="lecturer-${lecturer.id}">
                 <div>
-                    <!-- Card Header -->
                     <div class="card-top">
                         <div class="avatar-wrapper">
                             <div class="avatar">${initials}</div>
@@ -176,7 +256,6 @@ function renderDashboard() {
                         </div>
                     </div>
 
-                    <!-- Card Body Status details -->
                     <div class="status-section">
                         <div class="status-row">
                             <span class="label-text">Status Semasa</span>
@@ -200,7 +279,6 @@ function renderDashboard() {
                     </div>
                 </div>
 
-                <!-- Card Footer Actions -->
                 <div class="card-footer">
                     <span class="updated-time">Kemas kini: ${kemaskini}</span>
                     <div class="contact-buttons">
@@ -224,7 +302,6 @@ function renderDashboard() {
 // Helpers
 function getInitials(name) {
     if (!name) return 'S';
-    // Remove titles like DR., TS., HJ. etc for cleaner initials
     let cleaned = name.toUpperCase()
         .replace(/^(TS\.|DR\.|HJ\.|HAJI|PUAN|EN\.|ENCIK)\s+/i, '')
         .trim();
@@ -238,43 +315,34 @@ function getInitials(name) {
 
 function formatWhatsappLink(phone) {
     if (!phone) return '#';
-    // Clean all special characters, spaces, dashes
     let cleaned = phone.replace(/[^0-9]/g, '');
-    
-    // Standardize to country code (60 for Malaysia)
     if (cleaned.startsWith('0')) {
         cleaned = '6' + cleaned;
     } else if (!cleaned.startsWith('60') && cleaned.startsWith('1')) {
         cleaned = '60' + cleaned;
     }
-    
     return `https://api.whatsapp.com/send?phone=${cleaned}&text=Salam%20sejahtera%20pensyarah...`;
 }
 
 // Setup Event Listeners
 function setupEventListeners() {
-    // Search input
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value;
         renderDashboard();
     });
 
-    // Filters
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             filterBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            
             currentFilter = e.target.getAttribute('data-filter');
             renderDashboard();
         });
     });
 
-    // Theme Toggle
     themeToggle.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeUI(newTheme);
@@ -287,13 +355,15 @@ function updateLiveTime() {
     if (!liveDateEl || !liveTimeEl) return;
 
     const now = new Date();
-    
     const optionsDate = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     const dateStr = now.toLocaleDateString('ms-MY', optionsDate);
-    
     const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
     const timeStr = now.toLocaleTimeString('ms-MY', optionsTime).toUpperCase();
     
     liveDateEl.textContent = dateStr;
     liveTimeEl.textContent = timeStr;
 }
+
+// Initialize clock
+updateLiveTime();
+setInterval(updateLiveTime, 1000);
