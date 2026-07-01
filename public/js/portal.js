@@ -72,7 +72,7 @@ async function initLoginPage() {
     initTheme('loginThemeToggle', 'loginThemeIcon');
     const select = document.getElementById('lecturerSelect');
     const form = document.getElementById('loginForm');
-    const btnSubmit = document.getElementById('btnLoginSubmit');
+    const btnSubmit = document.getElementById('btnSubmit');
     const errorBox = document.getElementById('loginError');
     const errorText = document.getElementById('errorText');
 
