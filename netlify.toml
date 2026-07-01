@@ -1,0 +1,5 @@
+# netlify.toml - Konfigurasi Netlify untuk sistem e-Hadir KKPPS
+
+[build]
+  # Tetapkan folder 'public' sebagai direktori penerbitan (Publish directory)
+  publish = "public"
