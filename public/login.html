@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Hadir KKPPS | Log Masuk Staf</title>
+    <!-- CSS stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body class="auth-wrapper">
+
+    <div class="auth-card">
+        <!-- Theme Toggle inside auth card -->
+        <button class="btn-theme" id="authThemeToggle" title="Tukar Tema" style="position: absolute; top: 1rem; right: 1rem;">
+            <span class="material-symbols-outlined" id="authThemeIcon">dark_mode</span>
+        </button>
+
+        <div class="auth-header">
+            <div class="logo-icon">KP</div>
+            <h2>Portal Pensyarah</h2>
+            <p>Sistem Status e-Hadir KKPPS</p>
+        </div>
+
+        <form id="loginForm">
+            <!-- Dropdown list filled dynamically by Javascript -->
+            <div class="form-group">
+                <label for="lecturerSelect" class="form-label">Nama Pensyarah</label>
+                <select id="lecturerSelect" class="select-custom" required>
+                    <option value="" disabled selected>Memuatkan senarai staf...</option>
+                </select>
+            </div>
+
+            <!-- IC input password -->
+            <div class="form-group">
+                <label for="icInput" class="form-label">Nombor Kad Pengenalan (IC)</label>
+                <input type="password" id="icInput" class="input-custom" placeholder="Cth: 930420-12-6226" required autocomplete="current-password">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; font-weight: 500;">
+                    Masukkan format 12-digit dengan atau tanpa tanda sempang (-).
+                </p>
+            </div>
+
+            <!-- Error message container -->
+            <div id="loginError" style="display: none; color: var(--danger); font-size: 0.85rem; font-weight: 700; background: var(--danger-light); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-outlined" style="font-size: 1.25rem;">error</span>
+                <span id="errorText">Sila semak semula No. IC anda.</span>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">
+                <span class="material-symbols-outlined">login</span>
+                <span>Log Masuk</span>
+            </button>
+        </form>
+
+        <div class="auth-footer" style="display: flex; flex-direction: column; gap: 0.75rem; align-items: center;">
+            <a href="index.html" class="btn-link" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back</span>
+                <span>Kembali ke Paparan Pelajar</span>
+            </a>
+            <a href="admin_login.html" class="btn-link" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; opacity: 0.8;">
+                <span class="material-symbols-outlined" style="font-size: 1rem;">admin_panel_settings</span>
+                <span>Portal Pentadbir Sistem</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JS scripts -->
+    <script src="js/portal.js"></script>
+</body>
+</html>

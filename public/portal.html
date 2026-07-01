@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Hadir KKPPS | Urus Status Staf</title>
+    <!-- CSS stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header style="padding-bottom: 5rem;">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo-icon">KP</div>
+                <div class="logo-text">
+                    <h1>Portal Kawalan Status</h1>
+                    <p>Kemaskini kehadiran pensyarah live</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="btn-theme" id="portalThemeToggle" title="Tukar Tema">
+                    <span class="material-symbols-outlined" id="portalThemeIcon">dark_mode</span>
+                </button>
+                <button class="btn-logout" id="btnLogout">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem; vertical-align: middle;">logout</span>
+                    <span>Keluar</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container" style="margin-top: -3.5rem; max-width: 600px;">
+        
+        <!-- Logged-in Staff Info Card -->
+        <section class="portal-header-info">
+            <div class="user-profile">
+                <div class="avatar" id="portalAvatar" style="width: 50px; height: 50px; border-radius: 12px; font-size: 1.25rem;">-</div>
+                <div class="user-info">
+                    <h2 id="portalLecturerName">Nama Pensyarah</h2>
+                    <p id="portalLecturerRole">Jawatan / Unit</p>
+                </div>
+            </div>
+            <a href="index.html" class="btn-link" style="display: flex; align-items: center; gap: 0.25rem;">
+                <span class="material-symbols-outlined" style="font-size: 1.15rem;">visibility</span>
+                <span>Lihat Paparan Live</span>
+            </a>
+        </section>
+
+        <!-- Status Form Card -->
+        <section class="portal-card">
+            <h3>Kemaskini Kehadiran Anda</h3>
+            
+            <form id="statusForm">
+                <!-- Status Switch Toggle Options -->
+                <div class="status-toggle-container">
+                    <div class="status-option in-campus">
+                        <input type="radio" id="statusIn" name="statusToggle" value="Dalam Kampus" checked>
+                        <label for="statusIn" class="status-label">
+                            <span class="material-symbols-outlined status-label-icon">domain</span>
+                            <span>Dalam Kampus</span>
+                        </label>
+                    </div>
+                    <div class="status-option out-campus">
+                        <input type="radio" id="statusOut" name="statusToggle" value="Keluar">
+                        <label for="statusOut" class="status-label">
+                            <span class="material-symbols-outlined status-label-icon">logout</span>
+                            <span>Keluar Kampus</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Fields shown only if "Keluar" is selected -->
+                <div class="out-details-form" id="outDetailsForm">
+                    <div class="form-group">
+                        <label for="destinationInput" class="form-label">Destinasi / Tujuan</label>
+                        <input type="text" id="destinationInput" class="input-custom" placeholder="Cth: Jabatan Pendidikan Sabah / Urusan Peribadi">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="waktuKeluarInput" class="form-label">Masa Keluar</label>
+                            <input type="text" id="waktuKeluarInput" class="input-custom" placeholder="Cth: 10:30 AM / Sekarang">
+                        </div>
+                        <div class="form-group">
+                            <label for="waktuKembaliInput" class="form-label">Jangka Kembali</label>
+                            <input type="text" id="waktuKembaliInput" class="input-custom" placeholder="Cth: 2:30 PM / Esok">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnSaveStatus">
+                    <span class="material-symbols-outlined">save</span>
+                    <span>Simpan Kehadiran</span>
+                </button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JS scripts -->
+    <script src="js/portal.js"></script>
+</body>
+</html>

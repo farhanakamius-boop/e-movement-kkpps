@@ -1,0 +1,23 @@
+# .htaccess - Mengarahkan REST API ke api.php secara automatik
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Elakkan menulis semula jika fail atau direktori memang wujud fizikal
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Halakan API Pelajar & Staf
+    RewriteRule ^api/lecturers$ api.php?action=lecturers [QSA,L]
+    RewriteRule ^api/login$ api.php?action=login [QSA,L]
+    RewriteRule ^api/status$ api.php?action=status [QSA,L]
+
+    # Halakan API Pentadbir (Admin)
+    RewriteRule ^api/admin/login$ api.php?action=admin_login [QSA,L]
+    RewriteRule ^api/admin/lecturers$ api.php?action=admin_lecturers [QSA,L]
+    RewriteRule ^api/admin/add_lecturer$ api.php?action=admin_add [QSA,L]
+    RewriteRule ^api/admin/update_lecturer$ api.php?action=admin_update [QSA,L]
+    RewriteRule ^api/admin/delete_lecturer$ api.php?action=admin_delete [QSA,L]
+    RewriteRule ^api/admin/reset_all$ api.php?action=admin_reset_all [QSA,L]
+    RewriteRule ^api/admin/reset_single$ api.php?action=admin_reset_single [QSA,L]
+</IfModule>

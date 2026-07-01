@@ -1,0 +1,24 @@
+# .gitignore - Sistem Status Pensyarah KKPPS (e-Hadir)
+
+# Pangkalan data tempatan (dicipta secara dinamik oleh seeder)
+database.json
+
+# Logs peranti & MAMP logs
+logs/
+*.log
+
+# Sistem Operasi
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Pakej Node.js (jika digunakan kelak)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

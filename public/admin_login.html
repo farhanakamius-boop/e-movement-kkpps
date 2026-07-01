@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Hadir KKPPS | Log Masuk Pentadbir</title>
+    <!-- CSS stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body class="auth-wrapper">
+
+    <div class="auth-card">
+        <!-- Theme Toggle inside auth card -->
+        <button class="btn-theme" id="adminThemeToggle" title="Tukar Tema" style="position: absolute; top: 1rem; right: 1rem;">
+            <span class="material-symbols-outlined" id="adminThemeIcon">dark_mode</span>
+        </button>
+
+        <div class="auth-header">
+            <div class="logo-icon" style="background: linear-gradient(135deg, var(--danger) 0%, #f43f5e 100%); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">AD</div>
+            <h2>Portal Pentadbir</h2>
+            <p>Penyelenggaraan Sistem e-Hadir KKPPS</p>
+        </div>
+
+        <form id="adminLoginForm">
+            <!-- Username input -->
+            <div class="form-group">
+                <label for="usernameInput" class="form-label">Nama Pengguna (Username)</label>
+                <input type="text" id="usernameInput" class="input-custom" placeholder="Masukkan username" required autocomplete="username">
+            </div>
+
+            <!-- Password input -->
+            <div class="form-group">
+                <label for="passwordInput" class="form-label">Kata Laluan (Password)</label>
+                <input type="password" id="passwordInput" class="input-custom" placeholder="Masukkan password" required autocomplete="current-password">
+            </div>
+
+            <!-- Error message container -->
+            <div id="adminLoginError" style="display: none; color: var(--danger); font-size: 0.85rem; font-weight: 700; background: var(--danger-light); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-symbols-outlined" style="font-size: 1.25rem;">error</span>
+                <span id="adminErrorText">Nama pengguna atau kata laluan salah.</span>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnAdminSubmit" style="background: linear-gradient(135deg, var(--danger) 0%, #f43f5e 100%); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                <span>Log Masuk</span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="login.html" class="btn-link" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                <span class="material-symbols-outlined" style="font-size: 1.1rem;">arrow_back</span>
+                <span>Log Masuk Staf / Pensyarah</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JS scripts -->
+    <script src="js/admin.js"></script>
+</body>
+</html>
